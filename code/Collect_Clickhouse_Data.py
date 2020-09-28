@@ -28,9 +28,9 @@ class sqlSentence(object):
         self.sql_search_by_kind = " or lower(kind) like "
         self.sql_search_by_reason = " or lower(reason) like "
         self.sql_search_by_message = " or lower(message) like "
-        self.sql_search_by_all_deployment_related = " visitParamExtractString(involvedObject, 'kind') = 'Deployment' \
+        self.sql_search_by_all_deployment_related = " (visitParamExtractString(involvedObject, 'kind') = 'Deployment' \
             or visitParamExtractString(involvedObject, 'kind') = 'ReplicaSet'\
-            or visitParamExtractString(involvedObject, 'kind') = 'Pod'"
+            or visitParamExtractString(involvedObject, 'kind') = 'Pod')"
 
 '''
 输出格式为list, list中每个元素为如下json:
@@ -114,12 +114,14 @@ class analyseData_name(Resource):
         sql_sentence = sqlSentence()
         sql = sql_sentence.sql
         sql_search_by_name = sql_sentence.sql_search_by_name
+        sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
         # 返回的结果
         data = []
         sql_result = []
         try:
             namelist = json.loads(namelist)
-            sql += "where " + sql_search_by_name
+            sql += "where " + sql_search_by_all_deployment_related
+            sql += " and " + sql_search_by_name
             for name in namelist:
                 sql += "'"+name+"'"
                 sql += ";"
@@ -147,13 +149,15 @@ class analyseData_keyWord_name(Resource):
         sql_search_by_kind = sql_sentence.sql_search_by_kind
         sql_search_by_reason = sql_sentence.sql_search_by_reason
         sql_search_by_message = sql_sentence.sql_search_by_message
+        sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
         # 返回的结果
         data = []
         sql_result = []
         try:
             key_word = key_word.lower()
             namelist = json.loads(namelist)
-            sql += "where " + sql_search_by_name
+            sql += " where " + sql_search_by_all_deployment_related
+            sql += " and " + sql_search_by_name
             for name in namelist:
                 sql += "'"+name+"'"
                 sql += " and ("
