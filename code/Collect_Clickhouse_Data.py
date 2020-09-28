@@ -3,8 +3,6 @@ import json
 from flask import Flask
 from flask_restful import Resource, Api
 from clickhouse_driver import Client
-import pandas as pd
-import matplotlib.pyplot as plt
 import datetime
 
 
