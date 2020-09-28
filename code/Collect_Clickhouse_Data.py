@@ -183,9 +183,9 @@ api.add_resource(analyseData_all, '/analyseData_all')
 # 链接2：只有key word的条件下查询所有deployment的日志
 api.add_resource(analyseData_keyWord, '/analyseData_keyWord/<string:key_word>')
 # 链接3：只有deployment相关机器或主机号的情况下查询event日志
-api.add_resource(analyseData_name, '/analyseData_name/<string:namelist>')
+api.add_resource(analyseData_name, '/analyseData/<string:namelist>')
 # 链接4：利用deployment名称或rs或pod加关键字查询event日志
-api.add_resource(analyseData_keyWord_name, '/analyseData_keyWord_name/<string:key_word>/<string:namelist>')
+api.add_resource(analyseData_keyWord_name, '/analyseData/<string:namelist>/<string:key_word>')
 
 if __name__ == '__main__':
     app.run(debug=True, host=expose_host, port=expose_port)
