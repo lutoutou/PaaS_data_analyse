@@ -1,6 +1,6 @@
 import sys
 import json
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Resource, Api
 from clickhouse_driver import Client
 import datetime
@@ -47,149 +47,51 @@ class sqlSentence(object):
 # name = "coc2-common-77b9587fdc"
 # key_word = "warn"
 
-# 检索未加入任何参数，则搜索全部deplpyment信息
-class analyseData_all(Resource):
-    def get(self):
-        # 返回的结果
-        data = []
-        sql_result = []
-        sql_sentence = sqlSentence()
-        sql = sql_sentence.sql
-        sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
-        try:
-            sql += " where " + sql_search_by_all_deployment_related
-            sql += ";"
-            print(sql)
-            sql_result += client.execute(sql)
-            for row in sql_result:
-                temp_dict = {}
-                temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
-                temp_dict[titles[1]] = row[1]
-                temp_dict[titles[2]] = row[2]+":"+row[5]
-                temp_dict[titles[3]] = row[3]
-                temp_dict[titles[4]] = row[4]
-                data.append(temp_dict)
-        except Exception as r:
-            print(r)
-
-        return data
-
-class analyseData_keyWord(Resource):
-    def get(self, key_word):
-        sql_sentence = sqlSentence()
-        sql = sql_sentence.sql
-        sql_search_by_type = sql_sentence.sql_search_by_type
-        sql_search_by_kind = sql_sentence.sql_search_by_kind
-        sql_search_by_reason = sql_sentence.sql_search_by_reason
-        sql_search_by_message = sql_sentence.sql_search_by_message
-        key_word = key_word.lower()
-        # 返回的结果
-        data = []
-        sql_result = []
-        try:
-            sql += "where "
-            sql += sql_search_by_type + "'%"+key_word+"%'"
-            sql += sql_search_by_kind + "'%"+key_word+"%'"
-            sql += sql_search_by_reason + "'%"+key_word+"%'"
-            sql += sql_search_by_message + "'%"+key_word+"%'"
-            sql += ";"
-            print(sql)
-            sql_result += client.execute(sql)
-            for row in sql_result:
-                temp_dict = {}
-                temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
-                temp_dict[titles[1]] = row[1]
-                temp_dict[titles[2]] = row[2]+":"+row[5]
-                temp_dict[titles[3]] = row[3]
-                temp_dict[titles[4]] = row[4]
-                data.append(temp_dict)
-            
-        except Exception as r:
-            print(r)
-
-        return data
-
-class analyseData_name(Resource):
-    def get(self, namelist):
-        sql_sentence = sqlSentence()
-        sql = sql_sentence.sql
-        sql_search_by_name = sql_sentence.sql_search_by_name
-        sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
-        # 返回的结果
-        data = []
-        sql_result = []
-        try:
-            namelist = json.loads(namelist)
-            sql += "where " + sql_search_by_all_deployment_related
-            sql += " and " + sql_search_by_name
-            for name in namelist:
-                sql += "'"+name+"'"
-                sql += ";"
-                print(sql)
-                sql_result += client.execute(sql)
-            for row in sql_result:
-                temp_dict = {}
-                temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
-                temp_dict[titles[1]] = row[1]
-                temp_dict[titles[2]] = row[2]+":"+row[5]
-                temp_dict[titles[3]] = row[3]
-                temp_dict[titles[4]] = row[4]
-                data.append(temp_dict)
-        except Exception as r:
-            print(r)
-
-        return data
-
-class analyseData_keyWord_name(Resource):
-    def get(self, key_word, namelist):
-        sql_sentence = sqlSentence()
-        sql = sql_sentence.sql
-        sql_search_by_name = sql_sentence.sql_search_by_name
-        sql_search_by_type = sql_sentence.sql_search_by_type
-        sql_search_by_kind = sql_sentence.sql_search_by_kind
-        sql_search_by_reason = sql_sentence.sql_search_by_reason
-        sql_search_by_message = sql_sentence.sql_search_by_message
-        sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
-        # 返回的结果
-        data = []
-        sql_result = []
-        try:
+@app.route('/analyseData', methods=['GET'])
+def hello():
+    key_word = request.args.get('key_word')
+    namelist = request.args.get('namelist')
+    sql_sentence = sqlSentence()
+    sql = sql_sentence.sql
+    sql_search_by_name = sql_sentence.sql_search_by_name
+    sql_search_by_type = sql_sentence.sql_search_by_type
+    sql_search_by_kind = sql_sentence.sql_search_by_kind
+    sql_search_by_reason = sql_sentence.sql_search_by_reason
+    sql_search_by_message = sql_sentence.sql_search_by_message
+    sql_search_by_all_deployment_related = sql_sentence.sql_search_by_all_deployment_related
+    # 返回的结果
+    data = []
+    sql_result = []
+    try:
+        if key_word:
             key_word = key_word.lower()
-            namelist = json.loads(namelist)
-            sql += " where " + sql_search_by_all_deployment_related
-            sql += " and " + sql_search_by_name
-            for name in namelist:
-                sql += "'"+name+"'"
+        namelist = json.loads(namelist)
+        sql += " where " + sql_search_by_all_deployment_related
+        sql += " and " + sql_search_by_name
+        for name in namelist:
+            sql += "'"+name+"'"
+            if key_word:
                 sql += " and ("
                 sql += sql_search_by_type + "'%"+key_word+"%'"
                 sql += sql_search_by_kind + "'%"+key_word+"%'"
                 sql += sql_search_by_reason + "'%"+key_word+"%'"
                 sql += sql_search_by_message + "'%"+key_word+"%'"
                 sql += ")"
-                sql += ";"
-                print(sql)
-                sql_result += client.execute(sql)
-            for row in sql_result:
-                temp_dict = {}
-                temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
-                temp_dict[titles[1]] = row[1]
-                temp_dict[titles[2]] = row[2]+":"+row[5]
-                temp_dict[titles[3]] = row[3]
-                temp_dict[titles[4]] = row[4]
-                data.append(temp_dict)
-        except Exception as r:
-            print(r)
+            sql += ";"
+            print(sql)
+            sql_result += client.execute(sql)
+        for row in sql_result:
+            temp_dict = {}
+            temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
+            temp_dict[titles[1]] = row[1]
+            temp_dict[titles[2]] = row[2]+":"+row[5]
+            temp_dict[titles[3]] = row[3]
+            temp_dict[titles[4]] = row[4]
+            data.append(temp_dict)
+    except Exception as r:
+        print(r)
 
-        return data
-
-# 链接1：不加任何参数查询deployment的event日志
-api.add_resource(analyseData_all, '/analyseData_all')
-# 链接2：只有key word的条件下查询所有deployment的日志
-api.add_resource(analyseData_keyWord, '/analyseData_keyWord/<string:key_word>')
-# 链接3：只有deployment相关机器或主机号的情况下查询event日志
-api.add_resource(analyseData_name, '/analyseData/<string:namelist>')
-# 链接4：利用deployment名称或rs或pod加关键字查询event日志
-api.add_resource(analyseData_keyWord_name, '/analyseData/<string:namelist>/<string:key_word>')
+    return json.dumps(data)
 
 if __name__ == '__main__':
     app.run(debug=True, host=expose_host, port=expose_port)
