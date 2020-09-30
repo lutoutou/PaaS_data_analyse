@@ -2,18 +2,20 @@ import sys
 import json
 from flask import Flask, request
 from flask_restful import Resource, Api
-from clickhouse_driver import Client
+from pandahouse import read_clickhouse
 import datetime
 
 
 app = Flask(__name__)
 api = Api(app)
 
-# System arguments: the first argument should be host, and the second should be port number.
-# System arguments: the third argument should be the host expose to visit, and the forth should be port number expose with host to visit
-
-host, port, expose_host, expose_port = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-client = Client(host=host, port=port)
+if len(sys.argv)==6:
+    host, port, password, expose_host, expose_port = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+    connection = {'host':'http://'+host+':'+port+'/',\
+                  'password':password}
+elif len(sys.argv)==5:
+    host, port, expose_host, expose_port = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+    connection = {'host':'http://'+host+':'+port+'/'}
 
 # 每一项的标题
 titles = ["Time", "Type", "Object", "Reason", "Message"]
@@ -23,7 +25,7 @@ class sqlSentence(object):
     def __init__(self):
         self.sql = "select toDateTime(substring(visitParamExtractString(metadata, 'creationTimestamp'), 1, 19)) as Time, eventType, visitParamExtractString(involvedObject, 'kind') AS kind, reason, message, visitParamExtractString(involvedObject, 'name') AS name \
                         from datagather.paas_gather_event_logs_all "
-        self.sql_search_by_name = " visitParamExtractString(involvedObject, 'name')="
+        self.sql_search_by_name = " visitParamExtractString(involvedObject, 'name') like "
         self.sql_search_by_type = " lower(eventType) like "
         self.sql_search_by_kind = " or lower(kind) like "
         self.sql_search_by_reason = " or lower(reason) like "
@@ -50,7 +52,7 @@ class sqlSentence(object):
 @app.route('/analyseData', methods=['GET'])
 def hello():
     key_word = request.args.get('key_word')
-    namelist = request.args.get('namelist')
+    name = request.args.get('name')
     sql_sentence = sqlSentence()
     sql = sql_sentence.sql
     sql_search_by_name = sql_sentence.sql_search_by_name
@@ -65,29 +67,30 @@ def hello():
     try:
         if key_word:
             key_word = key_word.lower()
-        namelist = json.loads(namelist)
         sql += " where " + sql_search_by_all_deployment_related
         sql += " and " + sql_search_by_name
-        for name in namelist:
-            sql += "'"+name+"'"
-            if key_word:
-                sql += " and ("
-                sql += sql_search_by_type + "'%"+key_word+"%'"
-                sql += sql_search_by_kind + "'%"+key_word+"%'"
-                sql += sql_search_by_reason + "'%"+key_word+"%'"
-                sql += sql_search_by_message + "'%"+key_word+"%'"
-                sql += ")"
-            sql += ";"
-            print(sql)
-            sql_result += client.execute(sql)
-        for row in sql_result:
-            temp_dict = {}
-            temp_dict[titles[0]] = row[0].strftime('%Y-%m-%d %H:%M:%S')
-            temp_dict[titles[1]] = row[1]
-            temp_dict[titles[2]] = row[2]+":"+row[5]
-            temp_dict[titles[3]] = row[3]
-            temp_dict[titles[4]] = row[4]
-            data.append(temp_dict)
+        sql += "'"+name+"%'"
+        if key_word:
+            sql += " and ("
+            sql += sql_search_by_type + "'%"+key_word+"%'"
+            sql += sql_search_by_kind + "'%"+key_word+"%'"
+            sql += sql_search_by_reason + "'%"+key_word+"%'"
+            sql += sql_search_by_message + "'%"+key_word+"%'"
+            sql += ")"
+        sql += ";"
+        print(sql)
+        
+        df = read_clickhouse(sql, connection=connection)
+        print(df)
+
+        data = [{
+            titles[0]:row[0].strftime('%Y-%m-%d %H:%M:%S'),
+            titles[1]:row[1],
+            titles[2]:row[2]+":"+row[5],
+            titles[3]:row[3],
+            titles[4]:row[4]
+        } for row in df.values]
+
     except Exception as r:
         print(r)
 
